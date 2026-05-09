@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LeanFlow — Lean Management App</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,sans-serif;background:#0f1117;color:#f0f2f5;min-height:100vh}
+    .container{max-width:1200px;margin:0 auto;padding:1.5rem}
+
+    /* ===== AUTH ===== */
+    .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+    .auth-box{background:#1e2228;border:1px solid #3a3f47;border-radius:16px;padding:2rem;width:400px;max-width:95vw}
+    .auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:1.75rem;justify-content:center}
+    .auth-logo-icon{width:40px;height:40px;background:#1D9E75;border-radius:10px;display:flex;align-items:center;justify-content:center}
+    .auth-logo-icon i{color:#fff;font-size:22px}
+    .auth-logo-text{font-size:22px;font-weight:700;color:#f0f2f5}
+    .auth-title{font-size:18px;font-weight:600;color:#f0f2f5;margin-bottom:4px}
+    .auth-sub{font-size:13px;color:#a0a8b4;margin-bottom:1.5rem}
+    .f-row{margin-bottom:14px}
+    .f-row label{display:block;font-size:12px;color:#a0a8b4;margin-bottom:5px;font-weight:500}
+    .f-row input{width:100%;font-size:13px;padding:10px 12px;border:1px solid #3a3f47;border-radius:8px;background:#2a2f38;color:#f0f2f5;outline:none;transition:border-color .15s}
+    .f-row input:focus{border-color:#1D9E75}
+    .f-row input::placeholder{color:#606878}
+    .auth-err{font-size:12px;color:#E24B4A;margin-top:5px;display:none;padding:8px 10px;background:rgba(226,75,74,0.1);border-radius:6px;border:1px solid rgba(226,75,74,0.3)}
+    .auth-err.show{display:block}
+    .auth-ok{font-size:12px;color:#1D9E75;margin-top:5px;display:none;padding:8px 10px;background:rgba(29,158,117,0.1);border-radius:6px;border:1px solid rgba(29,158,117,0.3)}
+    .auth-ok.show{display:block}
+    .btn-auth{width:100%;padding:11px;font-size:14px;font-weight:600;background:#1D9E75;color:#fff;border:none;border-radius:8px;cursor:pointer;transition:background .15s}
+    .btn-auth:hover{background:#0F6E56}
+    .btn-auth:disabled{background:#555;cursor:not-allowed}
+    .auth-divider{display:flex;align-items:center;gap:10px;margin:1rem 0;color:#606878;font-size:12px}
+    .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#3a3f47}
+    .auth-switch{text-align:center;font-size:13px;color:#a0a8b4;margin-top:1.25rem}
+    .auth-switch a{color:#1D9E75;cursor:pointer;font-weight:500}
+    .auth-switch a:hover{text-decoration:underline}
+    .loading-overlay{position:fixed;inset:0;background:rgba(15,17,23,.85);display:flex;align-items:center;justify-content:center;z-index:999;font-size:14px;color:#a0a8b4;gap:10px}
+    .spinner{width:20px;height:20px;border:2px solid #3a3f47;border-top-color:#1D9E75;border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ===== APP ===== */
+    .app-wrap{display:none}
+    .app-wrap.show{display:block}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid #3a3f47}
+    .header-left{display:flex;align-items:center;gap:10px}
+    .logo{width:34px;height:34px;background:#1D9E75;border-radius:8px;display:flex;align-items:center;justify-content:center}
+    .logo i{color:#fff;font-size:18px}
+    .app-title{font-size:18px;font-weight:600;color:#f0f2f5}
+    .app-sub{font-size:12px;color:#a0a8b4}
+    .header-right{display:flex;align-items:center;gap:12px}
+    .tabs{display:flex;gap:4px;background:#1e2228;padding:4px;border-radius:8px;border:1px solid #3a3f47}
+    .tab{padding:6px 14px;font-size:13px;border:none;background:transparent;border-radius:6px;cursor:pointer;color:#a0a8b4;transition:all .15s;display:flex;align-items:center;gap:5px}
+    .tab.active{background:#2a2f38;color:#f0f2f5;font-weight:500}
+    .section{display:none}.section.active{display:block}
+    .user-badge{display:flex;align-items:center;gap:8px}
+    .user-avatar{width:30px;height:30px;background:#1D9E75;border-radius:99px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+    .user-name{font-size:13px;font-weight:500;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f0f2f5}
+    .btn-logout{font-size:12px;padding:5px 10px;border:1px solid #3a3f47;border-radius:6px;background:transparent;cursor:pointer;color:#a0a8b4}
+    .btn-logout:hover{background:#2a2f38}
+
+    /* Notifikasi */
+    .notif-bar{display:none;align-items:flex-start;gap:10px;background:#3a1a1a;border:1px solid #7a3030;border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:13px;color:#ff9090}
+    .notif-bar.show{display:flex}
+    .notif-list{flex:1;line-height:1.7}
+    .notif-close{background:none;border:none;cursor:pointer;color:#ff9090;font-size:16px;padding:0}
+
+    /* Filter bar */
+    .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+    .filter-bar label{font-size:12px;color:#a0a8b4}
+    .filter-bar select,.filter-bar input[type=text]{font-size:12px;padding:6px 10px;border:1px solid #3a3f47;border-radius:8px;background:#1e2228;color:#f0f2f5}
+    .filter-bar input{width:160px}
+    .btn-reset{font-size:12px;padding:5px 10px;border:1px solid #3a3f47;border-radius:8px;background:transparent;cursor:pointer;color:#a0a8b4}
+    .btn-reset:hover{background:#1e2228}
+    .btn-del-all{font-size:12px;padding:5px 10px;border:1px solid #7a3030;border-radius:8px;background:transparent;cursor:pointer;color:#ff6b6b}
+    .btn-del-all:hover{background:#3a1a1a}
+
+    /* Toolbar */
+    .kanban-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+    .kanban-toolbar span{font-size:13px;color:#a0a8b4}
+    .toolbar-right{display:flex;gap:8px;align-items:center}
+    .btn-add{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;font-size:13px;border:1px solid #3a3f47;border-radius:8px;background:#1e2228;cursor:pointer;color:#f0f2f5}
+    .btn-add:hover{background:#2a2f38}
+
+    /* Kanban */
+    .kanban-board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .col-title{font-size:13px;font-weight:500;color:#f0f2f5}
+    .col-count{font-size:11px;background:#2a2f38;border:1px solid #3a3f47;border-radius:99px;padding:1px 8px;color:#a0a8b4}
+    .col-body{min-height:200px;background:#1e2228;border-radius:12px;border:1px solid #3a3f47;padding:10px;display:flex;flex-direction:column;gap:8px}
+    .col-body.drag-over{border-color:#1D9E75;background:rgba(29,158,117,0.08)}
+    .card{background:#2a2f38;border:1px solid #3a3f47;border-radius:8px;padding:10px 12px;cursor:grab;transition:border-color .15s}
+    .card:hover{border-color:#555}
+    .card.dragging{opacity:.4}
+    .card.overdue{border-left:3px solid #E24B4A}
+    .card.due-soon{border-left:3px solid #EF9F27}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+    .card-title{font-size:13px;font-weight:500;line-height:1.4;color:#f0f2f5}
+    .card-del{background:none;border:none;cursor:pointer;color:#a0a8b4;padding:0;font-size:16px;line-height:1}
+    .card-del:hover{color:#E24B4A}
+    .card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .badge{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:500}
+    .badge.high{background:#3a1a1a;color:#ff8080}
+    .badge.medium{background:#3a2a10;color:#ffb74d}
+    .badge.low{background:#1a2e1a;color:#81c784}
+    .card-pic{font-size:11px;color:#a0a8b4}
+    .card-deadline{font-size:11px;display:flex;align-items:center;gap:3px}
+    .card-deadline.overdue{color:#E24B4A}
+    .card-deadline.soon{color:#EF9F27}
+    .card-deadline.ok{color:#a0a8b4}
+
+    /* Modal */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100}
+    .modal-bg.open{display:flex}
+    .modal{background:#1e2228;border:1px solid #3a3f47;border-radius:12px;padding:1.5rem;width:400px;max-width:95vw;max-height:90vh;overflow-y:auto}
+    .modal h3{font-size:16px;font-weight:600;margin-bottom:1rem;color:#f0f2f5}
+    .form-row{margin-bottom:12px}
+    .form-row label{display:block;font-size:12px;color:#a0a8b4;margin-bottom:4px;font-weight:500}
+    .form-row input,.form-row select,.form-row textarea{width:100%;font-size:13px;padding:8px 11px;border:1px solid #3a3f47;border-radius:8px;background:#2a2f38;color:#f0f2f5}
+    .form-row input::placeholder,.form-row textarea::placeholder{color:#606878}
+    .form-row select option{background:#2a2f38;color:#f0f2f5}
+    .form-row textarea{resize:vertical;min-height:70px}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem}
+    .btn-primary{padding:8px 18px;font-size:13px;background:#1D9E75;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+    .btn-primary:hover{background:#0F6E56}
+    .btn-cancel{padding:8px 14px;font-size:13px;background:transparent;border:1px solid #3a3f47;border-radius:8px;cursor:pointer;color:#a0a8b4}
+    .btn-cancel:hover{background:#2a2f38}
+
+    /* Kaizen */
+    .kaizen-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+    .kaizen-list{display:flex;flex-direction:column;gap:10px}
+    .kcard{background:#1e2228;border:1px solid #3a3f47;border-radius:12px;padding:14px 16px}
+    .kcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+    .kcard-title{font-size:14px;font-weight:500;color:#f0f2f5}
+    .kcard-status{font-size:11px;padding:2px 10px;border-radius:99px;font-weight:500;white-space:nowrap}
+    .status-open{background:#1a2a3a;color:#60a5fa}
+    .status-progress{background:#3a2a10;color:#ffb74d}
+    .status-done{background:#1a2e1a;color:#81c784}
+    .kcard-body{font-size:12px;color:#a0a8b4;line-height:1.6}
+    .kcard-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #3a3f47}
+    .kcard-meta{font-size:11px;color:#606878}
+    .kcard-del{background:none;border:none;cursor:pointer;color:#a0a8b4;font-size:16px}
+    .kcard-del:hover{color:#E24B4A}
+    .empty{text-align:center;padding:2rem;color:#a0a8b4;font-size:13px}
+
+    /* Stat */
+    .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.25rem}
+    .stat-card{background:#1e2228;border:1px solid #3a3f47;border-radius:10px;padding:14px 16px}
+    .stat-label{font-size:11px;color:#a0a8b4;margin-bottom:4px}
+    .stat-val{font-size:24px;font-weight:600}
+    .stat-sub{font-size:11px;color:#606878;margin-top:2px}
+    .progress-bar{height:4px;background:#3a3f47;border-radius:99px;margin-top:8px;overflow:hidden}
+    .progress-fill{height:100%;background:#1D9E75;border-radius:99px;transition:width .4s}
+    .chart-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .chart-card{background:#1e2228;border:1px solid #3a3f47;border-radius:10px;padding:16px}
+    .chart-title{font-size:13px;font-weight:500;margin-bottom:14px;color:#f0f2f5}
+    .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px}
+    .bar-label{width:80px;color:#a0a8b4;text-align:right;flex-shrink:0}
+    .bar-wrap{flex:1;background:#3a3f47;border-radius:99px;height:8px;overflow:hidden}
+    .bar-fill{height:100%;border-radius:99px;transition:width .5s}
+    .bar-val{width:24px;text-align:right;color:#a0a8b4;flex-shrink:0}
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading" style="display:none"><div class="spinner"></div> Memuat...</div>
+
+<!-- ===== AUTH ===== -->
+<div class="auth-wrap" id="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon"><i class="ti ti-topology-star-3"></i></div>
+      <span class="auth-logo-text">LeanFlow</span>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="page-login">
+      <div class="auth-title">Masuk ke akun kamu</div>
+      <div class="auth-sub">Gunakan Gmail yang sudah terdaftar</div>
+      <div class="f-row"><label>Alamat Gmail</label><input type="email" id="l-email" placeholder="nama@gmail.com"/></div>
+      <div class="f-row"><label>Kata sandi</label><input type="password" id="l-pass" placeholder="Kata sandi" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+      <div class="auth-err" id="l-err"></div>
+      <button class="btn-auth" id="btn-login" onclick="doLogin()">Masuk</button>
+      <div class="auth-divider">atau</div>
+      <div class="auth-switch">Belum punya akun? <a onclick="showPage('register')">Daftar sekarang</a></div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="page-register" style="display:none">
+      <div class="auth-title">Buat akun baru</div>
+      <div class="auth-sub">Daftarkan Gmail kamu untuk mulai</div>
+      <div class="f-row"><label>Nama lengkap</label><input type="text" id="r-name" placeholder="Nama kamu"/></div>
+      <div class="f-row"><label>Alamat Gmail</label><input type="email" id="r-email" placeholder="nama@gmail.com"/></div>
+      <div class="f-row"><label>Kata sandi</label><input type="password" id="r-pass" placeholder="Min. 6 karakter"/></div>
+      <div class="f-row"><label>Konfirmasi kata sandi</label><input type="password" id="r-pass2" placeholder="Ulangi kata sandi" onkeydown="if(event.key==='Enter')doRegister()"/></div>
+      <div class="auth-err" id="r-err"></div>
+      <div class="auth-ok" id="r-ok"></div>
+      <button class="btn-auth" id="btn-register" onclick="doRegister()">Daftar</button>
+      <div class="auth-switch" style="margin-top:1rem">Sudah punya akun? <a onclick="showPage('login')">Masuk</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div class="app-wrap" id="app-wrap">
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <div class="logo"><i class="ti ti-topology-star-3"></i></div>
+        <div><div class="app-title">LeanFlow</div><div class="app-sub">Manajemen Lean untuk Manufaktur</div></div>
+      </div>
+      <div class="header-right">
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('kanban')"><i class="ti ti-layout-kanban"></i> Kanban</button>
+          <button class="tab" onclick="switchTab('kaizen')"><i class="ti ti-bulb"></i> Kaizen Log</button>
+          <button class="tab" onclick="switchTab('stats')"><i class="ti ti-chart-bar"></i> Statistik</button>
+        </div>
+        <div class="user-badge">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <span class="user-name" id="user-name-display"></span>
+          <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout" style="font-size:12px;vertical-align:-1px"></i> Keluar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notif-bar" id="notif-bar">
+      <i class="ti ti-alert-triangle" style="font-size:16px;flex-shrink:0;margin-top:2px"></i>
+      <div class="notif-list" id="notif-list"></div>
+      <button class="notif-close" onclick="document.getElementById('notif-bar').classList.remove('show')"><i class="ti ti-x"></i></button>
+    </div>
+
+    <!-- KANBAN -->
+    <div id="kanban" class="section active">
+      <div class="kanban-toolbar">
+        <span id="task-summary"></span>
+        <div class="toolbar-right">
+          <button class="btn-del-all" onclick="confirmDelAll()"><i class="ti ti-trash"></i> Hapus semua selesai</button>
+          <button class="btn-add" onclick="exportTasksCSV()"><i class="ti ti-file-download"></i> Ekspor CSV</button>
+          <button class="btn-add" onclick="openModal()"><i class="ti ti-plus"></i> Tambah Task</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <label>Filter:</label>
+        <input type="text" id="f-search" placeholder="Cari judul / PIC..." oninput="renderBoard()"/>
+        <select id="f-prio" onchange="renderBoard()">
+          <option value="">Semua prioritas</option>
+          <option value="high">Tinggi</option><option value="medium">Sedang</option><option value="low">Rendah</option>
+        </select>
+        <select id="f-deadline" onchange="renderBoard()">
+          <option value="">Semua deadline</option>
+          <option value="overdue">Terlambat</option><option value="soon">Mendekati (3 hari)</option>
+          <option value="ok">Aman</option><option value="none">Tanpa deadline</option>
+        </select>
+        <button class="btn-reset" onclick="resetFilter()">Reset</button>
+      </div>
+      <div class="kanban-board" id="board"></div>
+    </div>
+
+    <!-- KAIZEN -->
+    <div id="kaizen" class="section">
+      <div class="kaizen-header">
+        <span id="kaizen-summary" style="font-size:13px;color:#a0a8b4"></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn-del-all" onclick="confirmDelAllKaizen()"><i class="ti ti-trash"></i> Hapus semua selesai</button>
+          <button class="btn-add" onclick="exportKaizenCSV()"><i class="ti ti-file-download"></i> Ekspor CSV</button>
+          <button class="btn-add" onclick="openKaizenModal()"><i class="ti ti-plus"></i> Tambah Ide</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <label>Filter:</label>
+        <input type="text" id="kf-search" placeholder="Cari judul / PIC..." oninput="renderKaizen()"/>
+        <select id="kf-status" onchange="renderKaizen()">
+          <option value="">Semua status</option>
+          <option value="open">Terbuka</option><option value="progress">Berjalan</option><option value="done">Selesai</option>
+        </select>
+        <button class="btn-reset" onclick="resetKFilter()">Reset</button>
+      </div>
+      <div class="kaizen-list" id="kaizen-list"></div>
+    </div>
+
+    <!-- STATISTIK -->
+    <div id="stats" class="section">
+      <div class="stat-grid" id="stat-grid"></div>
+      <div class="chart-row" id="chart-row"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div class="modal-bg" id="task-modal">
+  <div class="modal">
+    <h3>Task baru</h3>
+    <div class="form-row"><label>Judul task</label><input id="t-title" placeholder="Contoh: Periksa mesin line 3"/></div>
+    <div class="form-row"><label>Penanggung jawab</label><input id="t-pic" placeholder="Nama / divisi"/></div>
+    <div class="form-row"><label>Prioritas</label>
+      <select id="t-priority"><option value="high">Tinggi</option><option value="medium" selected>Sedang</option><option value="low">Rendah</option></select>
+    </div>
+    <div class="form-row"><label>Deadline</label><input type="date" id="t-deadline"/></div>
+    <div class="form-row"><label>Kolom awal</label>
+      <select id="t-col"><option value="0">Backlog</option><option value="1">In Progress</option><option value="2">Review</option><option value="3">Done</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Batal</button>
+      <button class="btn-primary" onclick="addTask()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Kaizen Modal -->
+<div class="modal-bg" id="kaizen-modal">
+  <div class="modal">
+    <h3>Ide perbaikan baru</h3>
+    <div class="form-row"><label>Judul masalah</label><input id="k-title" placeholder="Contoh: Downtime tinggi di stasiun pengelasan"/></div>
+    <div class="form-row"><label>Akar penyebab</label><textarea id="k-cause" placeholder="Jelaskan akar masalah..."></textarea></div>
+    <div class="form-row"><label>Solusi yang diusulkan</label><textarea id="k-solution" placeholder="Langkah perbaikan..."></textarea></div>
+    <div class="form-row"><label>Status</label>
+      <select id="k-status"><option value="open">Terbuka</option><option value="progress">Sedang berjalan</option><option value="done">Selesai</option></select>
+    </div>
+    <div class="form-row"><label>Penanggung jawab</label><input id="k-pic" placeholder="Nama / tim"/></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeKModal()">Batal</button>
+      <button class="btn-primary" onclick="addKaizen()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ⚠️  GANTI DENGAN URL & KEY DARI PROJECT SUPABASE KAMU ⚠️
+// ============================================================
+const SUPABASE_URL = 'https://fsefursuqgkyvipjusia.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzZWZ1cnN1cWdreXZpcGp1c2lhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMzk1NzMsImV4cCI6MjA5MzcxNTU3M30.z2o2useD70stul4G50MkiPignSrJsbUrk87nc42x80c';
+// ============================================================
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COLS = ['Backlog','In Progress','Review','Done'];
+const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+let tasks = [], kItems = [], currentUser = null, dragId = null;
+
+function showLoading(v){document.getElementById('loading').style.display=v?'flex':'none'}
+function showPage(p){['login','register'].forEach(id=>document.getElementById('page-'+id).style.display='none');document.getElementById('page-'+p).style.display='block'}
+function showErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.add('show')}
+function clearMsg(...ids){ids.forEach(id=>{const el=document.getElementById(id);el.classList.remove('show')})}
+
+/* ===== AUTH ===== */
+async function doLogin(){
+  clearMsg('l-err');
+  const email=document.getElementById('l-email').value.trim();
+  const pass=document.getElementById('l-pass').value;
+  if(!email||!email.endsWith('@gmail.com')){showErr('l-err','Gunakan alamat @gmail.com');return}
+  if(!pass){showErr('l-err','Masukkan kata sandi');return}
+  showLoading(true);
+  const {data,error}=await sb.auth.signInWithPassword({email,pass:pass,password:pass});
+  showLoading(false);
+  if(error){showErr('l-err',error.message==='Invalid login credentials'?'Email atau kata sandi salah':error.message);return}
+  await enterApp(data.user);
+}
+
+async function doRegister(){
+  clearMsg('r-err','r-ok');
+  const name=document.getElementById('r-name').value.trim();
+  const email=document.getElementById('r-email').value.trim();
+  const pass=document.getElementById('r-pass').value;
+  const pass2=document.getElementById('r-pass2').value;
+  if(!name){showErr('r-err','Masukkan nama lengkap');return}
+  if(!email||!email.endsWith('@gmail.com')){showErr('r-err','Gunakan alamat @gmail.com');return}
+  if(pass.length<6){showErr('r-err','Kata sandi minimal 6 karakter');return}
+  if(pass!==pass2){showErr('r-err','Konfirmasi kata sandi tidak cocok');return}
+  showLoading(true);
+  const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{name}}});
+  showLoading(false);
+  if(error){showErr('r-err',error.message);return}
+  const ok=document.getElementById('r-ok');
+  ok.textContent='✅ Pendaftaran berhasil! Silakan masuk.';ok.classList.add('show');
+  setTimeout(()=>showPage('login'),2000);
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  currentUser=null;tasks=[];kItems=[];
+  document.getElementById('app-wrap').classList.remove('show');
+  document.getElementById('auth-wrap').style.display='flex';
+  showPage('login');
+}
+
+async function enterApp(user){
+  currentUser=user;
+  const {data:profile}=await sb.from('profiles').select('name').eq('id',user.id).single();
+  const name=profile?.name||user.email.split('@')[0];
+  document.getElementById('user-name-display').textContent=name;
+  document.getElementById('user-avatar').textContent=name.charAt(0).toUpperCase();
+  document.getElementById('auth-wrap').style.display='none';
+  document.getElementById('app-wrap').classList.add('show');
+  await loadData();
+}
+
+/* ===== DATA ===== */
+async function loadData(){
+  showLoading(true);
+  const [t,k]=await Promise.all([
+    sb.from('tasks').select('*').order('created_at'),
+    sb.from('kaizen').select('*').order('created_at')
+  ]);
+  tasks=t.data||[];
+  kItems=(k.data||[]).map(k=>({...k,date:fmtDateFromISO(k.created_at)}));
+  showLoading(false);
+  renderBoard();renderKaizen();
+}
+
+function fmtDateFromISO(iso){const d=new Date(iso);return`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`}
+function today(){return new Date(new Date().toDateString())}
+function parseDate(s){if(!s)return null;const[y,m,d]=s.split('-');return new Date(+y,+m-1,+d)}
+function deadlineStatus(dl){if(!dl)return'none';const diff=(parseDate(dl)-today())/86400000;if(diff<0)return'overdue';if(diff<=3)return'soon';return'ok'}
+function fmtDate(s){if(!s)return'';const d=parseDate(s);return`${d.getDate()} ${MONTHS[d.getMonth()]}`}
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['kanban','kaizen','stats'][i]===t));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(t).classList.add('active');
+  if(t==='stats')renderStats();
+}
+
+/* NOTIFIKASI */
+function checkNotifs(){
+  const issues=[];
+  tasks.forEach(t=>{
+    if(t.col===3)return;
+    const st=deadlineStatus(t.deadline);
+    if(st==='overdue')issues.push(`<b>${t.title}</b> — deadline terlewat (${fmtDate(t.deadline)})`);
+    else if(st==='soon')issues.push(`<b>${t.title}</b> — deadline ${fmtDate(t.deadline)} (${Math.ceil((parseDate(t.deadline)-today())/86400000)} hari lagi)`);
+  });
+  const bar=document.getElementById('notif-bar');
+  if(issues.length){document.getElementById('notif-list').innerHTML=`<b>${issues.length} task perlu perhatian:</b><br>`+issues.join('<br>');bar.classList.add('show');}
+  else bar.classList.remove('show');
+}
+
+/* FILTER */
+function getFiltered(){
+  const q=document.getElementById('f-search').value.toLowerCase();
+  const p=document.getElementById('f-prio').value;
+  const d=document.getElementById('f-deadline').value;
+  return tasks.filter(t=>{
+    if(q&&!t.title.toLowerCase().includes(q)&&!t.pic.toLowerCase().includes(q))return false;
+    if(p&&t.priority!==p)return false;
+    if(d&&deadlineStatus(t.deadline)!==d)return false;
+    return true;
+  });
+}
+function resetFilter(){document.getElementById('f-search').value='';document.getElementById('f-prio').value='';document.getElementById('f-deadline').value='';renderBoard()}
+
+/* RENDER BOARD */
+function renderBoard(){
+  const b=document.getElementById('board');b.innerHTML='';
+  const prioLabel={high:'Tinggi',medium:'Sedang',low:'Rendah'};
+  const filtered=getFiltered();
+  COLS.forEach((col,ci)=>{
+    const cards=filtered.filter(t=>t.col===ci);
+    const el=document.createElement('div');
+    el.innerHTML=`<div class="col-header"><span class="col-title">${col}</span><span class="col-count">${cards.length}</span></div><div class="col-body" id="col-${ci}"></div>`;
+    b.appendChild(el);
+    const body=el.querySelector('.col-body');
+    body.addEventListener('dragover',e=>{e.preventDefault();body.classList.add('drag-over')});
+    body.addEventListener('dragleave',()=>body.classList.remove('drag-over'));
+    body.addEventListener('drop',e=>{e.preventDefault();body.classList.remove('drag-over');if(dragId!==null)moveTask(dragId,ci)});
+    if(!cards.length)body.innerHTML='<div style="font-size:12px;color:#606878;text-align:center;padding:1rem 0">Tidak ada task</div>';
+    cards.forEach(t=>{
+      const st=ci<3?deadlineStatus(t.deadline):'ok';
+      const c=document.createElement('div');
+      c.className='card'+(st==='overdue'?' overdue':st==='soon'?' due-soon':'');
+      c.draggable=true;c.dataset.id=t.id;
+      const dlHtml=t.deadline&&ci<3?`<span class="card-deadline ${st==='overdue'?'overdue':st==='soon'?'soon':'ok'}"><i class="ti ti-calendar" style="font-size:11px;vertical-align:-1px"></i> ${fmtDate(t.deadline)}${st==='overdue'?' ⚠':st==='soon'?' !':''}</span>`:'';
+      c.innerHTML=`<div class="card-top"><span class="card-title">${t.title}</span><button class="card-del" onclick="delTask(${t.id})"><i class="ti ti-x"></i></button></div>
+      <div class="card-meta"><span class="badge ${t.priority}">${prioLabel[t.priority]}</span><span class="card-pic"><i class="ti ti-user" style="font-size:11px"></i> ${t.pic}</span>${dlHtml}</div>`;
+      c.addEventListener('dragstart',()=>{dragId=t.id;c.classList.add('dragging')});
+      c.addEventListener('dragend',()=>{dragId=null;c.classList.remove('dragging')});
+      body.appendChild(c);
+    });
+  });
+  const tot=tasks.length,done=tasks.filter(t=>t.col===3).length;
+  document.getElementById('task-summary').textContent=`Total ${tot} task • ${done} selesai`;
+  checkNotifs();
+}
+
+async function moveTask(id,col){
+  await sb.from('tasks').update({col}).eq('id',id);
+  tasks.find(t=>t.id===id).col=col;
+  renderBoard();
+}
+async function delTask(id){
+  await sb.from('tasks').delete().eq('id',id);
+  tasks=tasks.filter(t=>t.id!==id);renderBoard();
+}
+async function confirmDelAll(){
+  const ids=tasks.filter(t=>t.col===3).map(t=>t.id);
+  if(!ids.length)return alert('Tidak ada task yang selesai.');
+  if(!confirm(`Hapus ${ids.length} task yang sudah selesai?`))return;
+  await sb.from('tasks').delete().in('id',ids);
+  tasks=tasks.filter(t=>t.col!==3);renderBoard();
+}
+function openModal(){document.getElementById('task-modal').classList.add('open')}
+function closeModal(){document.getElementById('task-modal').classList.remove('open')}
+async function addTask(){
+  const title=document.getElementById('t-title').value.trim();if(!title)return;
+  const row={title,pic:document.getElementById('t-pic').value||'—',priority:document.getElementById('t-priority').value,col:+document.getElementById('t-col').value,deadline:document.getElementById('t-deadline').value||null,user_id:currentUser.id};
+  const {data}=await sb.from('tasks').insert(row).select().single();
+  if(data)tasks.push(data);
+  ['t-title','t-pic','t-deadline'].forEach(id=>document.getElementById(id).value='');
+  closeModal();renderBoard();
+}
+
+/* KAIZEN */
+function getFilteredK(){
+  const q=document.getElementById('kf-search').value.toLowerCase();
+  const s=document.getElementById('kf-status').value;
+  return kItems.filter(k=>{
+    if(q&&!k.title.toLowerCase().includes(q)&&!k.pic.toLowerCase().includes(q))return false;
+    if(s&&k.status!==s)return false;
+    return true;
+  });
+}
+function resetKFilter(){document.getElementById('kf-search').value='';document.getElementById('kf-status').value='';renderKaizen()}
+
+function renderKaizen(){
+  const list=document.getElementById('kaizen-list');
+  const statusLabel={open:'Terbuka',progress:'Berjalan',done:'Selesai'};
+  const statusClass={open:'status-open',progress:'status-progress',done:'status-done'};
+  list.innerHTML='';
+  const filtered=getFilteredK();
+  if(!filtered.length){list.innerHTML='<div class="empty"><i class="ti ti-bulb" style="font-size:24px;display:block;margin-bottom:8px"></i>Tidak ada ide ditemukan</div>';return}
+  filtered.forEach(k=>{
+    const el=document.createElement('div');el.className='kcard';
+    el.innerHTML=`<div class="kcard-top"><div class="kcard-title">${k.title}</div><span class="kcard-status ${statusClass[k.status]}">${statusLabel[k.status]}</span></div>
+    <div class="kcard-body"><b style="font-weight:600;color:#f0f2f5">Akar penyebab:</b> ${k.cause}<br><b style="font-weight:600;color:#f0f2f5">Solusi:</b> ${k.solution}</div>
+    <div class="kcard-footer">
+      <span class="kcard-meta"><i class="ti ti-user" style="vertical-align:-2px;margin-right:4px"></i>${k.pic} · ${k.date}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select style="font-size:11px;padding:2px 6px;border:1px solid #3a3f47;border-radius:6px;background:#2a2f38;color:#f0f2f5" onchange="changeKStatus(${k.id},this.value)">
+          <option value="open" ${k.status==='open'?'selected':''}>Terbuka</option>
+          <option value="progress" ${k.status==='progress'?'selected':''}>Berjalan</option>
+          <option value="done" ${k.status==='done'?'selected':''}>Selesai</option>
+        </select>
+        <button class="kcard-del" onclick="delKaizen(${k.id})"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+    list.appendChild(el);
+  });
+  document.getElementById('kaizen-summary').textContent=`${kItems.length} ide · ${kItems.filter(k=>k.status==='done').length} selesai`;
+}
+
+async function changeKStatus(id,v){
+  await sb.from('kaizen').update({status:v}).eq('id',id);
+  const k=kItems.find(k=>k.id===id);if(k)k.status=v;renderKaizen();
+}
+async function delKaizen(id){
+  await sb.from('kaizen').delete().eq('id',id);
+  kItems=kItems.filter(k=>k.id!==id);renderKaizen();
+}
+async function confirmDelAllKaizen(){
+  const ids=kItems.filter(k=>k.status==='done').map(k=>k.id);
+  if(!ids.length)return alert('Tidak ada ide yang selesai.');
+  if(!confirm(`Hapus ${ids.length} ide yang sudah selesai?`))return;
+  await sb.from('kaizen').delete().in('id',ids);
+  kItems=kItems.filter(k=>k.status!=='done');renderKaizen();
+}
+function openKaizenModal(){document.getElementById('kaizen-modal').classList.add('open')}
+function closeKModal(){document.getElementById('kaizen-modal').classList.remove('open')}
+async function addKaizen(){
+  const title=document.getElementById('k-title').value.trim();if(!title)return;
+  const row={title,cause:document.getElementById('k-cause').value||'—',solution:document.getElementById('k-solution').value||'—',status:document.getElementById('k-status').value,pic:document.getElementById('k-pic').value||'—',user_id:currentUser.id};
+  const {data}=await sb.from('kaizen').insert(row).select().single();
+  if(data)kItems.push({...data,date:fmtDateFromISO(data.created_at)});
+  ['k-title','k-cause','k-solution','k-pic'].forEach(id=>document.getElementById(id).value='');
+  closeKModal();renderKaizen();
+}
+
+/* EKSPOR CSV */
+function toCSV(rows){return rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')}
+function downloadCSV(csv,fn){const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download=fn;a.click()}
+function exportTasksCSV(){
+  const pl={high:'Tinggi',medium:'Sedang',low:'Rendah'};
+  const rows=[['ID','Judul','PIC','Prioritas','Kolom','Deadline']];
+  tasks.forEach(t=>rows.push([t.id,t.title,t.pic,pl[t.priority],COLS[t.col],t.deadline||'—']));
+  downloadCSV(toCSV(rows),`kanban-${new Date().toISOString().slice(0,10)}.csv`);
+}
+function exportKaizenCSV(){
+  const sl={open:'Terbuka',progress:'Berjalan',done:'Selesai'};
+  const rows=[['ID','Judul','Akar Penyebab','Solusi','Status','PIC','Tanggal']];
+  kItems.forEach(k=>rows.push([k.id,k.title,k.cause,k.solution,sl[k.status],k.pic,k.date]));
+  downloadCSV(toCSV(rows),`kaizen-${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+/* STATISTIK */
+function renderStats(){
+  const tot=tasks.length,done=tasks.filter(t=>t.col===3).length;
+  const pct=tot?Math.round(done/tot*100):0;
+  const overdue=tasks.filter(t=>t.col<3&&deadlineStatus(t.deadline)==='overdue').length;
+  const kDone=kItems.filter(k=>k.status==='done').length;
+  document.getElementById('stat-grid').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total Task</div><div class="stat-val">${tot}</div><div class="stat-sub">${done} selesai</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>
+    <div class="stat-card"><div class="stat-label">Selesai</div><div class="stat-val" style="color:#1D9E75">${pct}%</div><div class="stat-sub">dari total task</div></div>
+    <div class="stat-card"><div class="stat-label">Terlambat</div><div class="stat-val" style="color:${overdue?'#E24B4A':'#f0f2f5'}">${overdue}</div><div class="stat-sub">task melewati deadline</div></div>
+    <div class="stat-card"><div class="stat-label">Kaizen Selesai</div><div class="stat-val" style="color:#1D9E75">${kDone}</div><div class="stat-sub">dari ${kItems.length} ide</div></div>`;
+  const cc=COLS.map((_,ci)=>tasks.filter(t=>t.col===ci).length);
+  const mc=Math.max(...cc,1);
+  const colColors=['#888780','#EF9F27','#378ADD','#1D9E75'];
+  const pc={high:tasks.filter(t=>t.priority==='high').length,medium:tasks.filter(t=>t.priority==='medium').length,low:tasks.filter(t=>t.priority==='low').length};
+  const mp=Math.max(...Object.values(pc),1);
+  const ks={open:kItems.filter(k=>k.status==='open').length,progress:kItems.filter(k=>k.status==='progress').length,done:kDone};
+  const mk=Math.max(...Object.values(ks),1);
+  document.getElementById('chart-row').innerHTML=`
+    <div class="chart-card"><div class="chart-title">Task per kolom</div>${COLS.map((c,i)=>`<div class="bar-row"><span class="bar-label">${c}</span><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(cc[i]/mc*100)}%;background:${colColors[i]}"></div></div><span class="bar-val">${cc[i]}</span></div>`).join('')}</div>
+    <div class="chart-card"><div class="chart-title">Task per prioritas</div>${[['high','Tinggi','#D85A30'],['medium','Sedang','#EF9F27'],['low','Rendah','#639922']].map(([k,l,c])=>`<div class="bar-row"><span class="bar-label">${l}</span><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(pc[k]/mp*100)}%;background:${c}"></div></div><span class="bar-val">${pc[k]}</span></div>`).join('')}</div>
+    <div class="chart-card" style="grid-column:1/-1"><div class="chart-title">Kaizen log per status</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">${[['open','Terbuka','#378ADD'],['progress','Berjalan','#EF9F27'],['done','Selesai','#1D9E75']].map(([k,l,c])=>`<div><div class="bar-row"><span class="bar-label">${l}</span><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(ks[k]/mk*100)}%;background:${c}"></div></div><span class="bar-val">${ks[k]}</span></div></div>`).join('')}</div></div>`;
+}
+
+/* ===== INIT ===== */
+(async()=>{
+  showLoading(true);
+  const {data:{session}}=await sb.auth.getSession();
+  showLoading(false);
+  if(session?.user){await enterApp(session.user);}
+  else{document.getElementById('auth-wrap').style.display='flex';showPage('login');}
+  sb.auth.onAuthStateChange((_,session)=>{if(!session)doLogout()});
+})();
+</script>
+</body>
+</html>
